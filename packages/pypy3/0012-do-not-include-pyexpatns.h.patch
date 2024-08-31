@@ -1,0 +1,13 @@
+This reverts commit 2be627cf25960c29e8c8a5e49c7012d0ae1390a6.
+
+--- a/pypy/module/pyexpat/interp_pyexpat.py
++++ b/pypy/module/pyexpat/interp_pyexpat.py
+@@ -22,7 +22,7 @@
+     pre_include_bits = []
+ 
+ eci = ExternalCompilationInfo(
+-    includes=['expat.h', 'pyexpatns.h'],
++    includes=['expat.h'],
+     include_dirs=[str(srcdir), cdir],
+     pre_include_bits = pre_include_bits,
+     separate_module_files=[
