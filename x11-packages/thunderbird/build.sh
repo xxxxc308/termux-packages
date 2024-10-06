@@ -2,9 +2,9 @@ TERMUX_PKG_HOMEPAGE=https://www.thunderbird.net
 TERMUX_PKG_DESCRIPTION="Unofficial Thunderbird email client"
 TERMUX_PKG_LICENSE="MPL-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION="128.3.0"
-TERMUX_PKG_SRCURL=https://archive.mozilla.org/pub/thunderbird/releases/${TERMUX_PKG_VERSION}esr/source/thunderbird-${TERMUX_PKG_VERSION}esr.source.tar.xz
-TERMUX_PKG_SHA256=160d961930713e8797d8f9f35417fcdd954fd5e19f50d437bf8ae85dd4a13c2f
+TERMUX_PKG_VERSION="115.13.0"
+TERMUX_PKG_SRCURL=https://archive.mozilla.org/pub/thunderbird/releases/${TERMUX_PKG_VERSION}/source/thunderbird-${TERMUX_PKG_VERSION}.source.tar.xz
+TERMUX_PKG_SHA256=f14ec9cb219194d5b6eabf26333f9e752ccc6d3fecb76750e6120bd8d6ae6d1f
 TERMUX_PKG_DEPENDS="ffmpeg, fontconfig, freetype, gdk-pixbuf, glib, gtk3, libandroid-shmem, libandroid-spawn, libc++, libcairo, libevent, libffi, libice, libicu, libjpeg-turbo, libnspr, libnss, libotr, libpixman, libsm, libvpx, libwebp, libx11, libxcb, libxcomposite, libxdamage, libxext, libxfixes, libxrandr, libxtst, pango, pulseaudio, zlib"
 TERMUX_PKG_BUILD_DEPENDS="binutils-cross, libcpufeatures, libice, libsm"
 TERMUX_PKG_BUILD_IN_SRC=true
@@ -12,7 +12,7 @@ TERMUX_PKG_BUILD_IN_SRC=true
 termux_step_post_get_source() {
 	local f="media/ffvpx/config_unix_aarch64.h"
 	echo "Applying sed substitution to ${f}"
-	sed -E '/^#define (CONFIG_LINUX_PERF|HAVE_SYSCTL) /s/1$/0/' -i ${f}
+	sed -i -E '/^#define (CONFIG_LINUX_PERF|HAVE_SYSCTL) /s/1$/0/' ${f}
 }
 
 termux_step_pre_configure() {
@@ -44,6 +44,10 @@ termux_step_pre_configure() {
 
 	cargo install cbindgen
 
+	sed \
+		-e "s|@CARGO_TARGET_NAME@|${CARGO_TARGET_NAME}|" \
+		-i "${TERMUX_PKG_SRCDIR}"/build/moz.configure/rust.configure
+
 	export HOST_CC=$(command -v clang)
 	export HOST_CXX=$(command -v clang++)
 
@@ -57,6 +61,7 @@ termux_step_pre_configure() {
 	LDFLAGS+=" -landroid-shmem -landroid-spawn -llog"
 
 	if [ "$TERMUX_ARCH" = "arm" ]; then
+		termux_setup_no_integrated_as
 		# For symbol android_getCpuFeatures
 		LDFLAGS+=" -l:libndk_compat.a"
 	fi
@@ -77,7 +82,6 @@ END
 	fi
 
 	./mach configure
-	./mach tb-rust vendor
 }
 
 termux_step_make() {
@@ -89,14 +93,4 @@ termux_step_make_install() {
 	./mach install
 
 	install -Dm644 -t "${TERMUX_PREFIX}/share/applications" "${TERMUX_PKG_BUILDER_DIR}/thunderbird.desktop"
-}
-
-termux_step_post_make_install() {
-	# https://github.com/termux/termux-packages/issues/21511
-	# https://phabricator.services.mozilla.com/D181687
-	# Android 8.x and older not support "-z pack-relative-relocs" / DT_RELR
-	local r=$("${READELF}" -d "${TERMUX_PREFIX}/bin/thunderbird")
-	if [[ -n "$(echo "${r}" | grep "(RELR)")" ]]; then
-		termux_error_exit "DT_RELR is unsupported on Android 8.x and older\n${r}"
-	fi
 }
