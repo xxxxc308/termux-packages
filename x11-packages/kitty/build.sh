@@ -2,10 +2,9 @@ TERMUX_PKG_HOMEPAGE=https://sw.kovidgoyal.net/kitty/
 TERMUX_PKG_DESCRIPTION="Cross-platform, fast, feature-rich, GPU based terminal"
 TERMUX_PKG_LICENSE="GPL-3.0"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION="0.36.4"
-TERMUX_PKG_REVISION=2
+TERMUX_PKG_VERSION="0.37.0"
 TERMUX_PKG_SRCURL=https://github.com/kovidgoyal/kitty/releases/download/v${TERMUX_PKG_VERSION}/kitty-${TERMUX_PKG_VERSION}.tar.xz
-TERMUX_PKG_SHA256=10ebf00a8576bca34ae683866c5be307a35f3c517906d6441923fd740db059bd
+TERMUX_PKG_SHA256=efbf933dfe930abd7c88ad0860997633c9c23b46c5000c5872ae3859dfbc50ff
 # fontconfig is dlopen(3)ed:
 TERMUX_PKG_DEPENDS="dbus, fontconfig, harfbuzz, libpng, librsync, libx11, libxkbcommon, littlecms, ncurses, opengl, openssl, python, xxhash, zlib"
 TERMUX_PKG_BUILD_DEPENDS="libxcursor, libxi, libxinerama, libxrandr, simde, xorgproto"
@@ -35,11 +34,13 @@ termux_step_host_build() {
 	local -A ver=(
 		[libx11]="$(. "${TERMUX_SCRIPTDIR}/packages/libx11/build.sh"; echo "${TERMUX_PKG_VERSION}")"
 		[libxcb]="$(. "${TERMUX_SCRIPTDIR}/packages/libxcb/build.sh"; echo "${TERMUX_PKG_VERSION}")"
+		[libxau]="$(. "${TERMUX_SCRIPTDIR}/packages/libxau/build.sh"; echo "${TERMUX_PKG_VERSION}")"
 		[xcb_proto]="$(. "${TERMUX_SCRIPTDIR}/packages/xcb-proto/build.sh"; echo "${TERMUX_PKG_VERSION}")"
 		[libxkbcommon]="$(. "${TERMUX_SCRIPTDIR}/x11-packages/libxkbcommon/build.sh"; echo "${TERMUX_PKG_VERSION}")"
 	)
 	local -A srcurl=(
 		[libx11]="$(. "${TERMUX_SCRIPTDIR}/packages/libx11/build.sh"; echo "${TERMUX_PKG_SRCURL}")"
+		[libxau]="$(. "${TERMUX_SCRIPTDIR}/packages/libxau/build.sh"; echo "${TERMUX_PKG_SRCURL}")"
 		[libxcb]="$(. "${TERMUX_SCRIPTDIR}/packages/libxcb/build.sh"; echo "${TERMUX_PKG_SRCURL}")"
 		[xcb_proto]="$(. "${TERMUX_SCRIPTDIR}/packages/xcb-proto/build.sh"; echo "${TERMUX_PKG_SRCURL}")"
 		[libxkbcommon]="$(. "${TERMUX_SCRIPTDIR}/x11-packages/libxkbcommon/build.sh"; echo "${TERMUX_PKG_SRCURL}")"
@@ -47,16 +48,19 @@ termux_step_host_build() {
 	local -A sha256=(
 		[libx11]="$(. "${TERMUX_SCRIPTDIR}/packages/libx11/build.sh"; echo "${TERMUX_PKG_SHA256}")"
 		[libxcb]="$(. "${TERMUX_SCRIPTDIR}/packages/libxcb/build.sh"; echo "${TERMUX_PKG_SHA256}")"
+		[libxau]="$(. "${TERMUX_SCRIPTDIR}/packages/libxau/build.sh"; echo "${TERMUX_PKG_SHA256}")"
 		[xcb_proto]="$(. "${TERMUX_SCRIPTDIR}/packages/xcb-proto/build.sh"; echo "${TERMUX_PKG_SHA256}")"
 		[libxkbcommon]="$(. "${TERMUX_SCRIPTDIR}/x11-packages/libxkbcommon/build.sh"; echo "${TERMUX_PKG_SHA256}")"
 	)
 
 	termux_download "${srcurl[libx11]}" "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libx11]}")" "${sha256[libx11]}"
+	termux_download "${srcurl[libxau]}" "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxau]}")" "${sha256[libxau]}"
 	termux_download "${srcurl[libxcb]}" "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxcb]}")" "${sha256[libxcb]}"
 	termux_download "${srcurl[xcb_proto]}" "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[xcb_proto]}")" "${sha256[xcb_proto]}"
 	termux_download "${srcurl[libxkbcommon]}" "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxkbcommon]}")" "${sha256[libxkbcommon]}"
 
 	tar -xf "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libx11]}")"
+	tar -xf "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxau]}")"
 	tar -xf "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxcb]}")"
 	tar -xf "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[xcb_proto]}")"
 	tar -xf "${TERMUX_PKG_CACHEDIR}/$(basename "${srcurl[libxkbcommon]}")"
@@ -66,6 +70,10 @@ termux_step_host_build() {
 	PKG_CONFIG_PATH+=":${TERMUX_PKG_HOSTBUILD_DIR}/lib/x86_64-linux-gnu/pkgconfig"
 
 	pushd "xcb-proto-${ver[xcb_proto]}" || termux_error_exit "Failed to hostbuild 'xcb_proto'"
+	./configure --prefix "${TERMUX_PKG_HOSTBUILD_DIR}"
+	make -j "${TERMUX_PKG_MAKE_PROCESSES}" install
+	popd
+	pushd "libXau-${ver[libxau]}" || termux_error_exit "Failed to hostbuild 'libxau'"
 	./configure --prefix "${TERMUX_PKG_HOSTBUILD_DIR}"
 	make -j "${TERMUX_PKG_MAKE_PROCESSES}" install
 	popd
